@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Biomas em Guerra: Floresta vs Invasores</title>
+    <title>Biomas em Guerra: Floresta vs Invasores (PRO)</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,55 +11,102 @@
 </head>
 <body>
     <div id="game-container">
-        <!-- HUD Superior -->
+        <!-- HUD Premium -->
         <header id="game-header">
-            <div class="faction-card forest" id="forest-hud">
-                <span class="faction-label">Floresta</span>
-                <span class="resource-count" id="forest-res">10 Tropas</span>
+            <div class="faction-panel forest" id="forest-hud">
+                <div class="faction-icon">🌲</div>
+                <div class="faction-info">
+                    <span class="faction-label">Floresta</span>
+                    <span class="resource-count" id="forest-res">10 Tropas</span>
+                </div>
             </div>
             
-            <div id="phase-control">
-                <div id="turn-display">Turno: <span id="current-faction">Floresta</span></div>
-                <div id="phase-display">Fase: <span id="current-phase">Recrutamento</span></div>
-                <div id="phase-steps">
-                    <div class="step active" data-id="RECRUIT">1</div>
-                    <div class="step" data-id="MOVE">2</div>
-                    <div class="step" data-id="EVENT">3</div>
-                    <div class="step" data-id="COMBAT">4</div>
+            <div id="phase-stepper">
+                <div id="turn-title">Turno: <span id="current-faction">Floresta</span></div>
+                <div class="steps-row">
+                    <div class="step-box" data-id="RECRUIT">
+                        <span class="step-num">1</span>
+                        <span class="step-name">Recrutar</span>
+                    </div>
+                    <div class="step-box" data-id="MOVE">
+                        <span class="step-num">2</span>
+                        <span class="step-name">Mover</span>
+                    </div>
+                    <div class="step-box" data-id="EVENT">
+                        <span class="step-num">3</span>
+                        <span class="step-name">Evento</span>
+                    </div>
+                    <div class="step-box" data-id="COMBAT">
+                        <span class="step-num">4</span>
+                        <span class="step-name">Conquista</span>
+                    </div>
                 </div>
             </div>
 
-            <div class="faction-card invaders" id="invader-hud">
-                <span class="faction-label">Invasores</span>
-                <span class="resource-count" id="invader-res">10 Tropas</span>
+            <div class="faction-panel invaders" id="invader-hud">
+                <div class="faction-info align-right">
+                    <span class="faction-label">Invasores</span>
+                    <span class="resource-count" id="invader-res">10 Tropas</span>
+                </div>
+                <div class="faction-icon">🚜</div>
             </div>
         </header>
 
-        <!-- Área do Mapa -->
-        <main id="board-area">
-            <svg id="game-map" viewBox="0 0 1000 800" preserveAspectRatio="xMidYMid meet">
+        <!-- Board -->
+        <main id="board">
+            <svg id="game-map" viewBox="0 0 1000 850" preserveAspectRatio="xMidYMid meet">
+                <defs>
+                   <filter id="glow">
+                        <feGaussianBlur stdDeviation="3.5" result="coloredBlur"/>
+                        <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                    </filter>
+                </defs>
                 <g id="links-layer"></g>
                 <g id="territories-layer"></g>
             </svg>
 
-            <!-- Painel de Ações -->
-            <div id="action-panel">
-                <div id="move-dice" class="dice-box hidden">
-                    <span id="dice-val">?</span>
-                    <p>Movimentos</p>
+            <!-- Floating UI -->
+            <div id="controls">
+                <div id="dice-display" class="hidden">
+                    <div class="dice d6" id="d6-visual">?</div>
+                    <span>Movimentos</span>
                 </div>
-                <button id="next-btn" class="main-btn">Próxima Fase</button>
-                <button id="special-btn" class="main-btn invader hidden">Extração de Madeira</button>
-                <div id="log"></div>
+                <button id="next-btn" class="glow-btn">PRÓXIMA FASE</button>
+                <button id="scorched-btn" class="action-btn hidden">🚜 Extração de Madeira</button>
             </div>
+
+            <div id="console-log"></div>
         </main>
 
-        <!-- Modais -->
-        <div id="modal-overlay" class="hidden">
-            <div id="modal-content">
-                <h2 id="modal-title">Evento</h2>
-                <div id="modal-body"></div>
-                <button id="modal-close" class="modal-btn">Fechar</button>
+        <!-- Battle Tray Overlay -->
+        <div id="battle-overlay" class="hidden">
+            <div class="battle-card">
+                <h2>COMBATE EM <span id="target-name">...</span></h2>
+                <div class="battle-arena">
+                    <div class="combatant forest">
+                        <h3>Floresta</h3>
+                        <div id="forest-dice" class="dice-set"></div>
+                    </div>
+                    <div class="vs">VS</div>
+                    <div class="combatant invaders">
+                        <h3>Invasores</h3>
+                        <div id="invader-dice" class="dice-set"></div>
+                    </div>
+                </div>
+                <div id="battle-result">Clique para rolar!</div>
+                <button id="roll-battle-btn" class="modal-btn">Rolar Dados</button>
+            </div>
+        </div>
+
+        <!-- Cards & Events Modal -->
+        <div id="event-overlay" class="hidden">
+            <div id="event-card">
+                <div id="event-content">
+                    <h2 id="event-title">Evento Sorte ou Revés</h2>
+                    <p id="event-text">Descrição do evento aqui.</p>
+                </div>
+                <div id="quiz-options" class="hidden"></div>
+                <button id="event-close-btn" class="modal-btn">Continuar</button>
             </div>
         </div>
     </div>
