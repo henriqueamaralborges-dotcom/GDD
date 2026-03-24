@@ -3,21 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eco-Guardião: Defesa da Floresta</title>
+    <title>Biomas em Guerra: Floresta vs Invasores</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Outfit:wght@500;800&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="game-ui">
-        <div id="score">Pontos: 0</div>
-        <div id="health-bar"><div id="health-fill"></div></div>
-    </div>
+    <div id="game-container">
+        <!-- HUD Superior -->
+        <header id="game-header">
+            <div class="faction-card forest" id="forest-hud">
+                <span class="faction-label">Floresta</span>
+                <span class="resource-count" id="forest-res">10 Tropas</span>
+            </div>
+            
+            <div id="phase-control">
+                <div id="turn-display">Turno: <span id="current-faction">Floresta</span></div>
+                <div id="phase-display">Fase: <span id="current-phase">Recrutamento</span></div>
+                <div id="phase-steps">
+                    <div class="step active" data-id="RECRUIT">1</div>
+                    <div class="step" data-id="MOVE">2</div>
+                    <div class="step" data-id="EVENT">3</div>
+                    <div class="step" data-id="COMBAT">4</div>
+                </div>
+            </div>
 
-    <canvas id="gameCanvas"></canvas>
+            <div class="faction-card invaders" id="invader-hud">
+                <span class="faction-label">Invasores</span>
+                <span class="resource-count" id="invader-res">10 Tropas</span>
+            </div>
+        </header>
 
-    <div id="overlay">
-        <h1 id="title">ECO-GUARDIÃO</h1>
-        <p id="message">Proteja a Árvore Sagrada!</p>
-        <button id="start-btn">INICIAR JOGO</button>
+        <!-- Área do Mapa -->
+        <main id="board-area">
+            <svg id="game-map" viewBox="0 0 1000 800" preserveAspectRatio="xMidYMid meet">
+                <g id="links-layer"></g>
+                <g id="territories-layer"></g>
+            </svg>
+
+            <!-- Painel de Ações -->
+            <div id="action-panel">
+                <div id="move-dice" class="dice-box hidden">
+                    <span id="dice-val">?</span>
+                    <p>Movimentos</p>
+                </div>
+                <button id="next-btn" class="main-btn">Próxima Fase</button>
+                <button id="special-btn" class="main-btn invader hidden">Extração de Madeira</button>
+                <div id="log"></div>
+            </div>
+        </main>
+
+        <!-- Modais -->
+        <div id="modal-overlay" class="hidden">
+            <div id="modal-content">
+                <h2 id="modal-title">Evento</h2>
+                <div id="modal-body"></div>
+                <button id="modal-close" class="modal-btn">Fechar</button>
+            </div>
+        </div>
     </div>
 
     <script src="script.js"></script>

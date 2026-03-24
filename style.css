@@ -1,77 +1,128 @@
-body, html {
-    margin: 0;
-    padding: 0;
+:root {
+    --forest: #2ecc71;
+    --forest-dark: #27ae60;
+    --invader: #e74c3c;
+    --invader-dark: #c0392b;
+    --bg: #0f172a;
+    --glass: rgba(255, 255, 255, 0.05);
+    --border: rgba(255, 255, 255, 0.1);
+    --accent: #f59e0b;
+    --txt: #f8fafc;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    background-color: var(--bg);
+    color: var(--txt);
+    font-family: 'Inter', sans-serif;
     overflow: hidden;
-    background-color: #1a1a1a;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    color: white;
+    height: 100vh;
+    width: 100vw;
 }
 
-#gameCanvas {
-    display: block;
-}
+h1, h2, .faction-label { font-family: 'Outfit', sans-serif; text-transform: uppercase; }
 
-#game-ui {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    right: 20px;
+#game-container { display: grid; grid-template-rows: auto 1fr; height: 100%; }
+
+/* Header & HUD */
+#game-header {
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem;
     display: flex;
     justify-content: space-between;
-    pointer-events: none;
+    align-items: center;
     z-index: 100;
 }
 
-#score {
-    font-size: 24px;
-    font-weight: bold;
-    color: #2ecc71;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-}
-
-#health-bar {
-    width: 200px;
-    height: 20px;
-    background: #444;
-    border-radius: 10px;
-    overflow: hidden;
-    border: 2px solid white;
-}
-
-#health-fill {
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, #e74c3c, #c0392b);
-    transition: width 0.3s ease;
-}
-
-#overlay {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-    background: rgba(0,0,0,0.9);
-    padding: 40px;
-    border-radius: 20px;
-    border: 3px solid #2ecc71;
-    z-index: 200;
-    box-shadow: 0 0 50px rgba(46, 204, 113, 0.3);
-}
-
-#title { font-size: 48px; color: #2ecc71; margin-bottom: 20px; text-transform: uppercase; }
-#message { font-size: 18px; margin-bottom: 30px; opacity: 0.8; }
-
-#start-btn {
-    padding: 15px 40px;
-    font-size: 24px;
-    background: #2ecc71;
-    color: white;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: bold;
+.faction-card {
+    padding: 0.8rem 1.5rem;
+    border-radius: 12px;
+    border-left: 6px solid #666;
+    background: rgba(255,255,255,0.03);
+    min-width: 180px;
     transition: all 0.3s ease;
 }
 
-#start-btn:hover { background: #27ae60; transform: scale(1.1); }
+.faction-card.forest { border-color: var(--forest); }
+.faction-card.invaders { border-color: var(--invader); }
+.faction-card.active { transform: scale(1.05); background: rgba(255,255,255,0.08); box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+
+.resource-count { display: block; font-size: 0.8rem; opacity: 0.8; margin-top: 4px; }
+
+#phase-control { text-align: center; }
+#turn-display { font-size: 1.2rem; font-weight: 800; color: var(--accent); }
+#phase-display { font-size: 0.8rem; opacity: 0.7; margin-bottom: 8px; }
+
+#phase-steps { display: flex; gap: 0.8rem; justify-content: center; }
+.step {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--glass); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; transition: all 0.3s;
+}
+.step.active { background: var(--accent); color: #000; font-weight: bold; box-shadow: 0 0 10px var(--accent); }
+
+/* Map Area */
+#board-area { position: relative; background: radial-gradient(circle at center, #1e293b, #0f172a); }
+#game-map { width: 100%; height: 100%; }
+
+.territory { cursor: pointer; transition: transform 0.2s; transition: stroke-width 0.2s; }
+.territory:hover { transform: scale(1.02); filter: brightness(1.2); }
+.territory.selected circle { stroke: #fff; stroke-width: 8; }
+
+.biome-label { fill: white; font-weight: bold; pointer-events: none; font-size: 14px; text-shadow: 1px 1px 2px #000; }
+.troop-label { fill: #fff; font-size: 12px; pointer-events: none; text-shadow: 1px 1px 2px #000; }
+
+.link { stroke: rgba(255,255,255,0.1); stroke-width: 1.5; stroke-dasharray: 4, 4; }
+
+/* Control Panel */
+#action-panel {
+    position: absolute; bottom: 2rem; right: 2rem;
+    display: flex; flex-direction: column; gap: 1rem; align-items: flex-end;
+}
+
+.main-btn {
+    padding: 1rem 2rem; border-radius: 50px; border: none;
+    font-family: 'Outfit'; font-weight: bold; color: white;
+    cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: 0.2s;
+}
+#next-btn { background: linear-gradient(135deg, var(--forest-dark), var(--forest)); }
+#next-btn.invader { background: linear-gradient(135deg, var(--invader-dark), var(--invader)); }
+#next-btn:active { transform: scale(0.95); }
+
+#special-btn { background: linear-gradient(135deg, #444, #222); border: 1px solid #666; }
+
+#log {
+    width: 280px; height: 180px; background: var(--glass);
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 0.8rem; overflow-y: auto; font-size: 0.8rem; color: #cbd5e1;
+    backdrop-filter: blur(10px);
+}
+.log-item { margin-bottom: 0.4rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 2px; }
+
+#move-dice {
+    background: #fff; color: #000; border-radius: 10px; width: 60px; height: 60px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: 'Outfit'; border: 2px solid var(--accent);
+}
+#dice-val { font-size: 1.5rem; font-weight: 800; }
+#move-dice p { font-size: 0.5rem; text-transform: uppercase; }
+
+/* Modal */
+#modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8); z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+}
+#modal-content {
+    background: #1e293b; border: 2px solid var(--accent); border-radius: 20px;
+    padding: 2.5rem; max-width: 450px; width: 90%; text-align: center;
+}
+.modal-btn {
+    margin-top: 2rem; padding: 0.8rem 2.5rem; background: var(--accent); 
+    border: none; border-radius: 8px; font-weight: bold; cursor: pointer;
+}
+
+.hidden { display: none !important; }

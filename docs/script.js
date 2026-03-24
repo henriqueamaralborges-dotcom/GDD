@@ -1,178 +1,278 @@
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const scoreElement = document.getElementById('score');
-const healthFill = document.getElementById('health-fill');
-const overlay = document.getElementById('overlay');
-const startBtn = document.getElementById('start-btn');
-const title = document.getElementById('title');
-const message = document.getElementById('message');
+/**
+ * GDD: Biomas em Guerra - Motor do Jogo
+ * Consolidado em Arquivo Único
+ */
 
-let score = 0;
-let health = 100;
-let gameActive = false;
-let projectiles = [];
-let enemies = [];
-let mouse = { x: 0, y: 0 };
+const FACTIONS = { FOREST: 'Floresta', INVADERS: 'Invasores' };
+const PHASES = { RECRUIT: 'Recrutamento', MOVE: 'Movimento', EVENT: 'Ação', COMBAT: 'Combate' };
 
-function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resize);
-resize();
+const BIOMES = {
+    AMAZON: { name: 'Amazônia', color: '#2ecc71', moveMod: (d) => Math.floor(d / 2) },
+    ATLANTIC: { name: 'Mata Atlântica', color: '#27ae60', moveMod: (d) => d },
+    CERRADO: { name: 'Cerrado', color: '#f39c12', defenseMod: -1, moveMod: (d) => d },
+    CAATINGA: { name: 'Caatinga', color: '#fbc02d', recruitCost: 2, moveMod: (d) => d },
+    PANTANAL: { name: 'Pantanal', color: '#3498db', moveMod: (d) => (d <= 2 ? 1 : d) },
+    ROCKY: { name: 'Costão Rochoso', color: '#95a5a6', moveMod: (d) => d }
+};
 
-window.addEventListener('mousemove', (e) => {
-    mouse.x = e.clientX;
-    mouse.y = e.clientY;
-});
-
-window.addEventListener('click', () => {
-    if (gameActive) spawnProjectile();
-});
-
-function spawnProjectile() {
-    const angle = Math.atan2(mouse.y - canvas.height / 2, mouse.x - canvas.width / 2);
-    projectiles.push({
-        x: canvas.width / 2,
-        y: canvas.height / 2,
-        velocity: {
-            x: Math.cos(angle) * 8,
-            y: Math.sin(angle) * 8
-        },
-        radius: 6,
-        color: '#2ecc71'
-    });
-}
-
-function spawnEnemy() {
-    if (!gameActive) return;
-    
-    let x, y;
-    if (Math.random() < 0.5) {
-        x = Math.random() < 0.5 ? 0 - 30 : canvas.width + 30;
-        y = Math.random() * canvas.height;
-    } else {
-        x = Math.random() * canvas.width;
-        y = Math.random() < 0.5 ? 0 - 30 : canvas.height + 30;
+class GameEngine {
+    constructor() {
+        this.turn = FACTIONS.FOREST;
+        this.phase = PHASES.RECRUIT;
+        this.territories = {};
+        this.resources = { [FACTIONS.FOREST]: 10, [FACTIONS.INVADERS]: 10 };
+        this.selectedId = null;
+        this.movePoints = 0;
+        this.log = [];
+        this.init();
     }
-    
-    const angle = Math.atan2(canvas.height / 2 - y, canvas.width / 2 - x);
-    enemies.push({
-        x: x,
-        y: y,
-        velocity: {
-            x: Math.cos(angle) * (1.5 + score / 500),
-            y: Math.sin(angle) * (1.5 + score / 500)
-        },
-        radius: 15,
-        color: '#e74c3c'
-    });
-}
 
-setInterval(spawnEnemy, 1000);
+    init() {
+        const specs = [
+            { type: 'AMAZON', count: 7 }, { type: 'ATLANTIC', count: 6 },
+            { type: 'CERRADO', count: 5 }, { type: 'CAATINGA', count: 4 },
+            { type: 'PANTANAL', count: 4 }, { type: 'ROCKY', count: 3 }
+        ];
 
-function resetGame() {
-    score = 0;
-    health = 100;
-    projectiles = [];
-    enemies = [];
-    scoreElement.textContent = `Pontos: ${score}`;
-    healthFill.style.width = '100%';
-    gameActive = true;
-    overlay.classList.add('hidden');
-    overlay.style.display = 'none';
-}
-
-startBtn.addEventListener('click', resetGame);
-
-function draw() {
-    ctx.fillStyle = 'rgba(26, 26, 26, 0.4)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Draw Sacred Tree (Center)
-    ctx.beginPath();
-    ctx.arc(canvas.width / 2, canvas.height / 2, 40, 0, Math.PI * 2);
-    ctx.fillStyle = '#27ae60';
-    ctx.fill();
-    ctx.closePath();
-
-    // Sacred Tree Glow
-    const glow = 15 + Math.sin(Date.now() / 200) * 5;
-    ctx.shadowBlur = glow;
-    ctx.shadowColor = '#2ecc71';
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    // Draw Guardian (Player cursor relative)
-    const angle = Math.atan2(mouse.y - canvas.height / 2, mouse.x - canvas.width / 2);
-    const guardX = canvas.width / 2 + Math.cos(angle) * 60;
-    const guardY = canvas.height / 2 + Math.sin(angle) * 60;
-    
-    ctx.beginPath();
-    ctx.arc(guardX, guardY, 12, 0, Math.PI * 2);
-    ctx.fillStyle = 'white';
-    ctx.fill();
-    ctx.closePath();
-
-    // Update & Draw Projectiles
-    projectiles.forEach((p, i) => {
-        p.x += p.velocity.x;
-        p.y += p.velocity.y;
-        
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fillStyle = p.color;
-        ctx.fill();
-        ctx.closePath();
-        
-        // Remove offscreen
-        if (p.x < -p.radius || p.x > canvas.width + p.radius || p.y < -p.radius || p.y > canvas.height + p.radius) {
-            projectiles.splice(i, 1);
-        }
-    });
-
-    // Update & Draw Enemies
-    enemies.forEach((e, i) => {
-        e.x += e.velocity.x;
-        e.y += e.velocity.y;
-        
-        ctx.beginPath();
-        ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
-        ctx.fillStyle = e.color;
-        ctx.fill();
-        ctx.closePath();
-        
-        // Collision with center (The Tree)
-        const distToCenter = Math.hypot(canvas.width / 2 - e.x, canvas.height / 2 - e.y);
-        if (distToCenter < 55) {
-            enemies.splice(i, 1);
-            health -= 10;
-            healthFill.style.width = `${health}%`;
-            if (health <= 0) gameOver();
-        }
-
-        // Collision with projectiles
-        projectiles.forEach((p, pi) => {
-            const dist = Math.hypot(e.x - p.x, e.y - p.y);
-            if (dist < e.radius + p.radius) {
-                enemies.splice(i, 1);
-                projectiles.splice(pi, 1);
-                score += 10;
-                scoreElement.textContent = `Pontos: ${score}`;
+        let idCounter = 1;
+        specs.forEach(s => {
+            for (let i = 0; i < s.count; i++) {
+                const id = `T${idCounter++}`;
+                this.territories[id] = {
+                    id, biome: s.type, name: `${BIOMES[s.type].name} ${i + 1}`,
+                    owner: idCounter <= 15 ? FACTIONS.FOREST : FACTIONS.INVADERS,
+                    troops: 3, scorched: 0, neighbors: []
+                };
             }
         });
-    });
 
-    requestAnimationFrame(draw);
+        // Grafo de conexões simplificado
+        const tids = Object.keys(this.territories);
+        tids.forEach((tid, idx) => {
+            if (tids[idx + 1]) this.addNeighbor(tid, tids[idx + 1]);
+            const randomJump = (idx + 5) % tids.length;
+            this.addNeighbor(tid, tids[randomJump]);
+        });
+    }
+
+    addNeighbor(a, b) {
+        if (!this.territories[a].neighbors.includes(b)) this.territories[a].neighbors.push(b);
+        if (!this.territories[b].neighbors.includes(a)) this.territories[b].neighbors.push(a);
+    }
+
+    handleTerritoryClick(id) {
+        const t = this.territories[id];
+        
+        if (this.phase === PHASES.RECRUIT) {
+            this.recruit(id);
+        } else if (this.phase === PHASES.MOVE) {
+            this.movementLogic(id);
+        } else if (this.phase === PHASES.COMBAT) {
+            this.combatLogic(id);
+        } else {
+            this.selectedId = id;
+        }
+        this.updateUI();
+    }
+
+    recruit(id) {
+        const t = this.territories[id];
+        if (t.owner !== this.turn) return;
+        const cost = t.biome === 'CAATINGA' ? 2 : 1;
+        if (this.resources[this.turn] >= cost) {
+            this.resources[this.turn] -= cost;
+            t.troops++;
+            this.addLog(`Recrutou em ${id}.`);
+        }
+    }
+
+    movementLogic(id) {
+        if (!this.selectedId) {
+            if (this.territories[id].owner === this.turn) this.selectedId = id;
+            return;
+        }
+
+        const from = this.territories[this.selectedId];
+        if (from.neighbors.includes(id) && from.troops > 1) {
+            if (this.movePoints === 0) {
+                const roll = Math.floor(Math.random() * 6) + 1;
+                this.movePoints = BIOMES[from.biome].moveMod(roll);
+                this.addLog(`Dado: ${roll}. Movimentos: ${this.movePoints}`);
+            }
+
+            if (this.movePoints > 0) {
+                from.troops--;
+                this.territories[id].troops++; // Simplified move (assumes same owner check)
+                this.movePoints--;
+                this.addLog(`Moveu para ${id}.`);
+            }
+        } else {
+            this.selectedId = id;
+        }
+    }
+
+    combatLogic(id) {
+        if (!this.selectedId) {
+            if (this.territories[id].owner === this.turn) this.selectedId = id;
+            return;
+        }
+
+        const attacker = this.territories[this.selectedId];
+        const defender = this.territories[id];
+
+        if (attacker.owner !== defender.owner && attacker.neighbors.includes(id) && attacker.troops >= 2) {
+            this.resolveBattle(this.selectedId, id);
+        } else {
+            this.selectedId = id;
+        }
+    }
+
+    resolveBattle(aId, dId) {
+        const att = this.territories[aId];
+        const def = this.territories[dId];
+        const attDice = [0,0,0].map(() => Math.floor(Math.random() * 6) + 1).sort((a,b) => b-a);
+        const defDice = [0,0,0].map(() => Math.floor(Math.random() * 6) + 1).sort((a,b) => b-a);
+        
+        let attLoss = 0, defLoss = 0;
+        for(let i=0; i<3; i++) {
+            let dVal = defDice[i];
+            if (def.biome === 'CERRADO') dVal = Math.max(1, dVal - 1);
+
+            let attWins = att.owner === FACTIONS.FOREST ? attDice[i] >= dVal : attDice[i] > dVal;
+            if (attWins) defLoss++; else attLoss++;
+        }
+
+        att.troops = Math.max(1, att.troops - attLoss);
+        def.troops -= defLoss;
+
+        if (def.troops <= 0) {
+            def.owner = att.owner;
+            def.troops = 1;
+            this.addLog(`Vitória! ${dId} conquistado.`);
+        } else {
+            this.addLog(`Combate em ${dId}: Atacante perdeu ${attLoss}, Defensor perdeu ${defLoss}`);
+        }
+    }
+
+    nextPhase() {
+        const keys = Object.values(PHASES);
+        let currIdx = keys.indexOf(this.phase);
+        if (currIdx === keys.length - 1) {
+            this.phase = keys[0];
+            this.turn = this.turn === FACTIONS.FOREST ? FACTIONS.INVADERS : FACTIONS.FOREST;
+            this.processEndTurn();
+        } else {
+            this.phase = keys[currIdx + 1];
+        }
+
+        this.selectedId = null;
+        this.movePoints = 0;
+        if (this.phase === PHASES.EVENT) this.spawnEvent();
+        this.updateUI();
+    }
+
+    processEndTurn() {
+        Object.values(this.territories).forEach(t => { if(t.scorched > 0) t.scorched--; });
+        const control = { [FACTIONS.FOREST]: 0, [FACTIONS.INVADERS]: 0 };
+        Object.values(this.territories).forEach(t => control[t.owner]++);
+        this.resources[FACTIONS.FOREST] += Math.max(2, Math.floor(control[FACTIONS.FOREST] / 3));
+        this.resources[FACTIONS.INVADERS] += Math.max(2, Math.floor(control[FACTIONS.INVADERS] / 3));
+    }
+
+    spawnEvent() {
+        const isForest = this.turn === FACTIONS.FOREST;
+        const events = isForest ? ["Poder da Terra", "Cipó Expansivo"] : ["Motosserra Industrial", "Drone de Vigilância"];
+        const ev = events[Math.floor(Math.random() * events.length)];
+        this.showModal(`Evento: ${ev}`, `A facção ${this.turn} ativou uma carta especial.`);
+    }
+
+    showModal(title, body) {
+        document.getElementById('modal-title').textContent = title;
+        document.getElementById('modal-body').textContent = body;
+        document.getElementById('modal-overlay').classList.remove('hidden');
+    }
+
+    addLog(msg) {
+        this.log.push({ msg, time: new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }) });
+        this.updateUI();
+    }
+
+    updateUI() {
+        document.getElementById('current-faction').textContent = this.turn;
+        document.getElementById('current-phase').textContent = this.phase;
+        document.getElementById('forest-res').textContent = `${this.resources[FACTIONS.FOREST]} Tropas`;
+        document.getElementById('invader-res').textContent = `${this.resources[FACTIONS.INVADERS]} Tropas`;
+        
+        document.getElementById('forest-hud').classList.toggle('active', this.turn === FACTIONS.FOREST);
+        document.getElementById('invader-hud').classList.toggle('active', this.turn === FACTIONS.INVADERS);
+        
+        document.querySelectorAll('.step').forEach(s => s.classList.toggle('active', s.dataset.id === Object.keys(PHASES).find(k => PHASES[k] === this.phase)));
+        document.getElementById('next-btn').className = `main-btn ${this.turn === FACTIONS.INVADERS ? 'invader' : ''}`;
+        
+        const logBox = document.getElementById('log');
+        logBox.innerHTML = this.log.slice(-8).reverse().map(l => `<div class='log-item'>[${l.time}] ${l.msg}</div>`).join('');
+        
+        document.getElementById('move-dice').classList.toggle('hidden', this.phase !== PHASES.MOVE || this.movePoints <= 0);
+        document.getElementById('dice-val').textContent = this.movePoints;
+        
+        this.renderMap();
+    }
+
+    renderMap() {
+        const nodesPos = this.getNodesPos();
+        const links = document.getElementById('links-layer');
+        const terrs = document.getElementById('territories-layer');
+        links.innerHTML = ''; terrs.innerHTML = '';
+
+        Object.values(this.territories).forEach(t => {
+            const p = nodesPos[t.id];
+            t.neighbors.forEach(nId => {
+                const np = nodesPos[nId];
+                const line = `<line class='link' x1='${p.x}' y1='${p.y}' x2='${np.x}' y2='${np.y}' />`;
+                links.insertAdjacentHTML('beforeend', line);
+            });
+        });
+
+        Object.values(this.territories).forEach(t => {
+            const p = nodesPos[t.id];
+            const isSelected = this.selectedId === t.id;
+            const factionClass = t.owner === FACTIONS.FOREST ? 'forest' : 'invader';
+            const color = t.owner === FACTIONS.FOREST ? '#27ae60' : '#c0392b';
+            const stroke = BIOMES[t.biome].color;
+            
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('class', `territory ${isSelected ? 'selected' : ''}`);
+            g.innerHTML = `
+                <circle cx='${p.x}' cy='${p.y}' r='38' fill='${color}' stroke='${stroke}' stroke-width='4' />
+                <text x='${p.x}' y='${p.y+5}' text-anchor='middle' class='biome-label'>${t.id}</text>
+                <circle cx='${p.x+25}' cy='${p.y-25}' r='12' fill='#333' />
+                <text x='${p.x+25}' y='${p.y-21}' text-anchor='middle' class='troop-label'>${t.troops}</text>
+            `;
+            g.onclick = () => this.handleTerritoryClick(t.id);
+            terrs.appendChild(g);
+        });
+    }
+
+    getNodesPos() {
+        const centers = {
+            AMAZON: {x: 250, y: 220}, ATLANTIC: {x: 720, y: 250},
+            CERRADO: {x: 500, y: 450}, CAATINGA: {x: 750, y: 600},
+            PANTANAL: {x: 250, y: 620}, ROCKY: {x: 520, y: 720}
+        };
+        const pos = {};
+        const bCounts = {};
+        Object.values(this.territories).forEach(t => {
+            const c = centers[t.biome];
+            bCounts[t.biome] = (bCounts[t.biome] || 0) + 1;
+            const angle = (bCounts[t.biome] / 8) * (2 * Math.PI);
+            pos[t.id] = { x: c.x + Math.cos(angle)*100, y: c.y + Math.sin(angle)*100 };
+        });
+        return pos;
+    }
 }
 
-function gameOver() {
-    gameActive = false;
-    overlay.style.display = 'block';
-    overlay.classList.remove('hidden');
-    title.textContent = 'FIM DE JOGO';
-    message.textContent = `Você protegeu a floresta e fez ${score} pontos!`;
-    startBtn.textContent = 'RECOMEÇAR';
-}
-
-draw();
+const game = new GameEngine();
+document.getElementById('next-btn').onclick = () => game.nextPhase();
+document.getElementById('modal-close').onclick = () => document.getElementById('modal-overlay').classList.add('hidden');
+window.addEventListener('keydown', (e) => { if(e.key === 'Enter') game.nextPhase(); });
+ game.updateUI();
